@@ -214,21 +214,8 @@ Edit `prompt.txt` or modify the `_build_system_prompt()` method in `sql_agent.py
 
 This project is provided as-is for educational and commercial use.
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## 📧 Support
-
 For issues and questions:
 1. Check this README
 2. Review error messages in debug mode
 3. Check the logs
 4. Contact the administrator
-
-## 🙏 Acknowledgments
-
-- Built with [PydanticAI](https://github.com/pydantic/pydantic-ai)
-- Powered by [Google Gemini](https://ai.google.dev/)
-- UI by [Streamlit](https://streamlit.io/)
-- Database via [PostgreSQL](https://www.postgresql.org/)
