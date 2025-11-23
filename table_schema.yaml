@@ -1,0 +1,109 @@
+table_name: california_procurement
+
+# Key information about the table itself
+metadata:
+  purpose: Stores processed procurement data from the State of California's eSCPRS system.
+  data_source_note: This data dictionary is based on the DGS Purchasing Data Dictionary.
+  database_type: PostgreSQL
+
+# Definition of all columns, including type and description
+columns:
+  - name: creation_date
+    type: DATE
+    description: System Date when the record was created.
+  - name: purchase_date
+    type: DATE
+    description: Date the purchase order was entered by the user. This date can be back dated; the creation date is primarily used for system tracking.
+  - name: fiscal_year
+    type: TEXT
+    description: Fiscal year derived based on creation date. California fiscal year starts on July 1 and ends on June 30.
+  - name: lpa_number
+    type: TEXT
+    description: Leveraged Procurement Agreement (LPA) Number, aka Contract Number. If present, the amount is considered contract spend.
+  - name: purchase_order_number
+    type: TEXT
+    description: Purchase Order Number (not unique; different departments can have the same number).
+  - name: requisition_number
+    type: TEXT
+    description: Requisition Number (not unique; different departments can have the same number).
+  - name: acquisition_type
+    type: TEXT
+    description: Type of Acquisition (e.g., Non-IT Goods, IT Services).
+  - name: sub_acquisition_type
+    type: TEXT
+    description: A sub-acquisition type that depends on the acquisition type used.
+  - name: acquisition_method
+    type: TEXT
+    description: Type of acquisition method used to make purchase.
+  - name: sub_acquisition_method
+    type: TEXT
+    description: A sub-acquisition method that depends on the acquisition method used.
+  - name: department_name
+    type: TEXT
+    description: Name of purchasing department (Normalized field).
+  - name: supplier_code
+    type: TEXT
+    description: Supplier code (Normalized field).
+  - name: supplier_name
+    type: TEXT
+    description: Supplier name entered by supplier at time of registration with the state.
+  - name: supplier_qualifications
+    type: TEXT
+    description: Identifies supplier qualifications (SB, SBE, DVBE, NP, MB). These are not mutually exclusive.
+  - name: supplier_zip_code
+    type: TEXT
+    description: Supplier Zip Code.
+  - name: calcard
+    type: TEXT
+    description: State credit card (CalCard) used for purchased? Yes/No.
+  - name: item_name
+    type: TEXT
+    description: Name of items being purchased.
+  - name: item_description
+    type: TEXT
+    description: Description of items being purchased.
+  - name: quantity
+    type: NUMERIC
+    description: Quantity of items being purchased.
+  - name: unit_price
+    type: NUMERIC(18, 2)
+    description: Unit price of items.
+  - name: total_price
+    type: NUMERIC(18, 2)
+    description: Total price of items. This does not include taxes or shipping.
+  - name: classification_codes
+    type: TEXT
+    description: United Nations Standard Products and Services Code® (UNSPSC) v.14. May have more than one number.
+  - name: normalized_unspsc
+    type: NUMERIC
+    description: Normalized UNSPSC v.14 number. The first 8 digits identify the entire purchase order.
+  - name: commodity_title
+    type: TEXT
+    description: Correlated commodity title based on the 8 digit Normalized UNSPSC.
+  - name: class
+    type: NUMERIC
+    description: Correlated class number based on the 8 digit Normalized UNSPSC.
+  - name: class_title
+    type: TEXT
+    description: Correlated class title based on the 8 digit Normalized UNSPSC.
+  - name: family
+    type: NUMERIC
+    description: Correlated family number based on the 8 digit Normalized UNSPSC.
+  - name: family_title
+    type: TEXT
+    description: Correlated family title based on the 8 digit Normalized UNSPSC.
+  - name: segment
+    type: NUMERIC
+    description: Correlated segment number based on the 8 digit Normalized UNSPSC.
+  - name: segment_title
+    type: TEXT
+    description: Title of the Segment segment.
+  - name: location
+    type: TEXT
+    description: Purchase location/region.
+
+# Instructions or critical notes for the LLM
+llm_query_notes:
+  - note: Financial aggregations must use the "total_price" column, which is a NUMERIC(18, 2) type. No string cleaning is required for this field.
+  - note: When querying by "purchase date", use the 'purchase_date' column. When querying by "system date" or "order created date", use 'creation_date'.
+  - note: The fiscal year runs from July 1 to June 30.
