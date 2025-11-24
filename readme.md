@@ -1,221 +1,175 @@
-# Penny Procurement Assistant
 
-A comprehensive text-to-SQL chat application built with PydanticAI, PostgreSQL, and Streamlit. Ask natural language questions about California procurement data and get SQL-powered insights.
+# Penny Procurement Assistant 🤖💰
 
-## 🌟 Features
+**An AI-powered Procurement Agent.**
 
-### Backend (PydanticAI Agent)
-- **Natural Language to SQL**: Powered by Google Gemini via PydanticAI
-- **Intelligent Query Generation**: Context-aware SQL generation with schema understanding
-- **Automatic Retry Logic**: Up to 3 automatic retries for failed queries with user feedback
-- **Conversation Memory**: Maintains context across queries for better follow-up questions
-- **Structured Responses**: Type-safe responses with Pydantic validation
-- **Error Handling**: Comprehensive error handling with detailed user feedback
+_(Note: Please replace `assets/demo.gif` with your actual recording of the application)_
 
-### Frontend (Streamlit)
-- **Professional Chat Interface**: Clean, modern UI with chat-style interactions
-- **Example Queries**: One-click example queries to get started
-- **Session Management**: Create, rename, and delete chat sessions
-- **SQL Transparency**: View generated SQL queries for any response
-- **Results Visualization**: Interactive dataframes with download capability
-- **Light/Dark Theme**: Automatic theme switching support
-- **Real-time Processing**: Async query processing with loading indicators
+## 📋 Overview
 
-### Database
-- **PostgreSQL Backend**: Reliable data storage and query execution
-- **Connection Pooling**: Efficient connection management with psycopg3
-- **Chat Persistence**: Store all conversations in PostgreSQL
-- **Schema-Aware**: Loads and understands table schema from YAML configuration
+**Penny Procurement Assistant** is an intelligent data assistant designed to democratize access to procurement data (namely, California procurement data). Instead of writing complex SQL queries manually, users can ask natural language questions like _"How much did we spend with Ramsell in 2015?"_ or _"Show me the top 5 suppliers by transaction count."_
 
-## 📋 Prerequisites
+Penny translates these questions into safe, executable PostgreSQL queries, fetches the data, and presents it in an interactive chat interface. It leverages **Google's Gemini** models via **PydanticAI** for high-speed, structured reasoning.
 
-- Python 3.10 or higher
-- PostgreSQL 12 or higher
-- Google Gemini API key
+## ✨ Features
 
-## 🚀 Installation
+### 🖥️ Frontend
 
-### 1. Clone the Repository
-```bash
-git clone <repository-url>
-cd procurement-sql-assistant
+-   **Interactive Chat Interface:** A familiar, ChatGPT-like experience with typing simulation.
+    
+-   **Data Visualization:** Automatically renders SQL results into interactive tables.
+    
+-   **Data Export:** Download full query results for offline analysis.
+    
+-   **Session Management:** Create, rename, delete, and switch between multiple chat history sessions.
+    
+-   **SQL Transparency:** "View Code" expanders allow technical users to inspect the generated SQL for verification.
+    
+-   **Connection Health:** Real-time indicator of database connectivity.
+    
+
+### ⚙️ Backend
+
+-   **Hybrid Intelligence:** Distinguishes between data requests (SQL generation) and general chatter (LLM knowledge) to save costs and reduce latency.
+    
+-   **Schema-Aware Generation:** dynamically injects database context and "cheat sheet" rules into the prompt to ensure high accuracy.
+    
+-   **Robust Error Handling:** Implements automatic retries for failed queries and safe fallbacks.
+    
+-   **Connection Pooling:** Uses `psycopg_pool` to handle concurrent database requests efficiently.
+    
+-   **Persistent History:** Stores all conversations and metadata in a structured PostgreSQL schema.
+    
+
+## 🛠️ Tech Stack
+
+-   **Language:** Python 3.10+
+    
+-   **LLM Framework:** [PydanticAI](https://github.com/pydantic/pydantic-ai "null")
+    
+-   **Model:** Google Gemini Flash (latest)
+    
+-   **Database:** PostgreSQL
+    
+-   **DB Driver:** `psycopg` (v3) with Connection Pooling
+    
+-   **Frontend:** Streamlit
+    
+-   **Configuration:** Pydantic Settings & Python-dotenv
+    
+
+## 🚀 How to Run
+
+### Prerequisites
+
+-   Python 3.9 or higher
+    
+-   PostgreSQL installed and running locally or in the cloud.
+    
+
+### 1. Clone and Configure
+
+```
+git clone [https://github.com/your-username/penny-procurement.git](https://github.com/your-username/penny-procurement.git)
+cd penny-procurement
+
 ```
 
-### 2. Create Virtual Environment
-```bash
+### 2. Set up Virtual Environment
+
+```
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Windows
+venv\Scripts\activate
+# Mac/Linux
+source venv/bin/activate
+
 ```
 
 ### 3. Install Dependencies
-```bash
+
+```
 pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
-Copy the `.env.example` to `.env` and update with your credentials:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set:
-- `GOOGLE_API_KEY`: Your Google Gemini API key
-- `DB_*`: Your PostgreSQL connection details
-
-### 5. Set Up Database
-
-#### Create Database
-```bash
-psql -U postgres
-CREATE DATABASE penny_db;
-\q
-```
-
-#### Load Your Data
-If you have the California procurement CSV:
-```bash
-# Use your preferred method to load the CSV into the california_procurement table
-# Example using psql:
-psql -U postgres -d penny_db -c "\COPY california_procurement FROM 'your_data.csv' WITH CSV HEADER;"
-```
-
-### 6. Initialize Chat Tables
-The application will automatically create the necessary chat management tables on first run:
-- `chat_sessions`: Stores chat session metadata
-- `chat_messages`: Stores individual messages
-
-## 🎯 Usage
-
-### Start the Application
-```bash
-streamlit run streamlit_app.py
-```
-
-The application will open in your default browser at `http://localhost:8501`
-
-### Using the Interface
-
-1. **Start with Examples**: Click any example query on the welcome screen
-2. **Ask Questions**: Type natural language questions in the chat input
-3. **View Results**: See SQL queries, explanations, and data results
-4. **Download Data**: Export query results as CSV
-5. **Manage Sessions**: Create new chats, rename, or delete from the sidebar
-
-### Example Questions
-
-- "What was the total procurement spending in fiscal year 2014-15?"
-- "Show me the top 10 suppliers by total spending"
-- "How many purchase orders were made using CalCard?"
-- "What are the most purchased items by the Department of Transportation?"
-- "Show procurement spending by acquisition type for 2013"
-
-## 🏗️ Project Structure
 
 ```
-procurement-sql-assistant/
-├── .streamlit/
-│   └── config.toml          # Streamlit theme configuration
-├── config.py                 # Application configuration
-├── database.py               # Database connection and query execution
-├── sql_agent.py             # PydanticAI agent for SQL generation
-├── chat_manager.py          # Chat session management
-├── streamlit_app.py         # Streamlit frontend
-├── requirements.txt         # Python dependencies
-├── .env                     # Environment variables (create from .env.example)
-├── table_schema.yaml        # Database schema definition
-├── prompt.txt              # Base system prompt
-└── README.md               # This file
+
+### 4. Environment Variables
+
+Create a `.env` file in the root directory, or rename sample.env for convenience.
+
+### 5. Load Data
+
+Run the data loader script to populate your PostgreSQL database with the California procurement dataset.
+
+```
+python data_load.py
+
 ```
 
-## 🔧 Configuration
+### 6. Launch the App
 
-### Environment Variables
+Start the Streamlit interface:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DB_USER` | PostgreSQL username | postgres |
-| `DB_PASSWORD` | PostgreSQL password | postgres |
-| `DB_HOST` | Database host | localhost |
-| `DB_PORT` | Database port | 5432 |
-| `DB_NAME` | Database name | penny_db |
-| `TABLE_NAME` | Target table name | california_procurement |
-| `GOOGLE_API_KEY` | Google Gemini API key | (required) |
-| `GEMINI_MODEL` | Gemini model to use | gemini-2.0-flash |
-| `MAX_QUERY_RETRIES` | Maximum retry attempts | 3 |
-| `SESSION_TIMEOUT` | Session timeout (minutes) | 30 |
-| `DEBUG_MODE` | Enable debug logging | False |
+```
+streamlit run streamlit_app_py.py
 
-### Schema Configuration
+```
 
-The `table_schema.yaml` file defines your database schema. The agent uses this to:
-- Understand available columns and their types
-- Generate appropriate SQL queries
-- Provide context-aware suggestions
+## 📐 Design Decisions
 
-## 🎨 Customization
+### 7.1 Why PostgreSQL over MongoDB (NoSQL)?
 
-### Changing Themes
-Edit `.streamlit/config.toml` to customize colors and appearance for both light and dark modes.
+While NoSQL is often attractive for rapid prototyping, we deliberately chose a Relational Database Management System (RDBMS) for this use case:
 
-### Adding Example Queries
-Update the `EXAMPLE_QUERIES` variable in `.env` with pipe-separated queries.
+1.  **Technical Debt & Structure:** Procurement data is inherently tabular and structured. Using NoSQL for highly structured data often leads to "loose" schemas that accumulate technical debt and data quality issues over time.
+    
+2.  **Schema Complexity:** A NoSQL approach like MongoDB would likely require significant denormalization. This complicates the aggregation pipeline, whereas SQL is purpose-built for the types of `JOIN`, `GROUP BY`, and `SUM` operations required for financial analytics.
+    
+3.  **LLM Accuracy:** Recent research (see [ArXiv:2411.05521](https://arxiv.org/abs/2411.05521 "null")) indicates that LLMs struggle significantly more with MongoDB Query Language (MQL) (approx. 21.55% zero-shot accuracy) compared to SQL (47.05%). The translation complexity for MQL is inherently higher due to the nested nature of JSON documents.
+    
+4.  **Performance:** For read-heavy analytical dashboards, a well-indexed PostgreSQL database offers superior latency and optimization compared to document stores, which is critical for a responsive chat interface.
+    
 
-### Modifying System Prompt
-Edit `prompt.txt` or modify the `_build_system_prompt()` method in `sql_agent.py` to adjust agent behavior.
+### 7.2 Why PydanticAI instead of LangChain?
 
-## 🐛 Troubleshooting
+We chose PydanticAI for its "close-to-the-metal" philosophy:
 
-### Connection Issues
-- Verify PostgreSQL is running: `pg_isready`
-- Check database credentials in `.env`
-- Ensure database exists and is accessible
+-   **Type Safety:** It leverages Python's native type hinting system, making the codebase easier to debug and maintain compared to LangChain's heavy abstractions.
+    
+-   **Structured Output:** PydanticAI excels at forcing LLMs to return valid JSON (e.g., our `SQLResponse` model). This significantly reduces the parser errors common in string-based chain libraries.
+    
+-   **Control Flow:** Instead of complex "Graphs" or "Chains," PydanticAI uses standard Python functions and loops, making the logic transparent.
+    
 
-### API Issues
-- Verify `GOOGLE_API_KEY` is set correctly
-- Check API quota and limits
-- Enable debug mode for detailed logs
+### 7.3 Async Handling in Streamlit
 
-### Query Failures
-- Review generated SQL in the expander
-- Check table schema matches actual database
-- Verify data types in `table_schema.yaml`
+Streamlit is fundamentally synchronous, while high-performance AI agents are asynchronous.
 
-## 📦 Dependencies
+-   **The Constraint:** Running `async` code directly in Streamlit often leads to event loop conflicts.
+    
+-   **The Solution:** We implemented a custom `run_async` bridge that manages the `asyncio` event loop manually. This allows us to keep the frontend simple while leveraging the non-blocking performance of PydanticAI in the backend.
+    
 
-### Core Packages
-- **pydantic-ai** (0.0.16): AI agent framework
-- **pydantic** (2.10.4): Data validation
-- **google-generativeai** (0.8.3): Gemini API client
-- **psycopg** (3.2.3): PostgreSQL adapter
-- **streamlit** (1.41.1): Web interface
-- **python-dotenv** (1.0.1): Environment management
-- **pyyaml** (6.0.2): YAML parsing
+### 7.4 Security: Read-Only Database Access
 
-## 🔐 Security Notes
+To prevent the Agent from accidentally (or maliciously) altering data:
 
-- Never commit `.env` file with real credentials
-- Use environment variables for sensitive data
-- Implement proper authentication for production deployments
-- Sanitize user inputs (handled by psycopg parameterized queries)
-- Limit database user permissions to necessary operations
+-   The database user credentials provided to the `SQLAgent` should be restricted at the PostgreSQL level.
+    
+-   **Policy:** The user typically has `CONNECT` and `SELECT` privileges only. Commands like `DROP`, `DELETE`, or `INSERT` will be rejected by the database engine itself, providing a hard security layer beyond prompt engineering.
+    
 
-## 🚧 Future Enhancements
+### 7.5 Security: SQL Injection Prevention
 
-- [ ] Support for multiple tables and joins
-- [ ] Query result caching
-- [ ] Export to multiple formats (Excel, JSON)
-- [ ] Advanced visualization options
-- [ ] Query history analytics
-- [ ] Multi-user authentication
-- [ ] Query templates and saved queries
+-   **Chat History:** Interactions with the application database (storing chat logs) utilize `psycopg`'s parameterized queries (e.g., `VALUES (%s, %s)`). This ensures user input is treated strictly as data, not executable code.
+    
+-   **Generated SQL:** While the LLM generates the SQL, we validate the syntax and rely on the Read-Only database permissions to prevent destructive injection attacks.
+    
 
-## 📝 License
+### 7.6 Data Compliance & Privacy
 
-This project is provided as-is for educational and commercial use.
+To ensure data sovereignty and prevent leakage:
 
-For issues and questions:
-1. Check this README
-2. Review error messages in debug mode
-3. Check the logs
-4. Contact the administrator
+-   **Schema-Only Transmission:** The LLM is **never** fed the actual rows of data in the prompt. It only receives the `table_schema.yaml` (column names and types). The actual financial data remains in your private PostgreSQL instance.
+    
+-   **Result Filtering:** Data is queried locally. The LLM only sees the _results_ if a summary is requested, minimizing the data footprint sent to external APIs
