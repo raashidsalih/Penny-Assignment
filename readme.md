@@ -3,7 +3,7 @@
 
 **An AI-powered Procurement Agent.**
 
-_(Note: Please replace `assets/demo.gif` with your actual recording of the application)_
+![main screen](https://github.com/raashidsalih/Penny-Assignment/blob/main/assets/main_screen.png)
 
 ## Overview
 
