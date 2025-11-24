@@ -1,19 +1,19 @@
 
-# Penny Procurement Assistant 🤖💰
+# Penny Procurement Assistant
 
 **An AI-powered Procurement Agent.**
 
 _(Note: Please replace `assets/demo.gif` with your actual recording of the application)_
 
-## 📋 Overview
+## Overview
 
 **Penny Procurement Assistant** is an intelligent data assistant designed to democratize access to procurement data (namely, California procurement data). Instead of writing complex SQL queries manually, users can ask natural language questions like _"How much did we spend with Ramsell in 2015?"_ or _"Show me the top 5 suppliers by transaction count."_
 
 Penny translates these questions into safe, executable PostgreSQL queries, fetches the data, and presents it in an interactive chat interface. It leverages **Google's Gemini** models via **PydanticAI** for high-speed, structured reasoning.
 
-## ✨ Features
+## Features
 
-### 🖥️ Frontend
+### Frontend
 
 -   **Interactive Chat Interface:** A familiar, ChatGPT-like experience with typing simulation.
     
@@ -28,7 +28,7 @@ Penny translates these questions into safe, executable PostgreSQL queries, fetch
 -   **Connection Health:** Real-time indicator of database connectivity.
     
 
-### ⚙️ Backend
+### Backend
 
 -   **Hybrid Intelligence:** Distinguishes between data requests (SQL generation) and general chatter (LLM knowledge) to save costs and reduce latency.
     
@@ -41,7 +41,7 @@ Penny translates these questions into safe, executable PostgreSQL queries, fetch
 -   **Persistent History:** Stores all conversations and metadata in a structured PostgreSQL schema.
     
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 -   **Language:** Python 3.10+
     
@@ -58,7 +58,7 @@ Penny translates these questions into safe, executable PostgreSQL queries, fetch
 -   **Configuration:** Pydantic Settings & Python-dotenv
     
 
-## 🚀 How to Run
+## How to Run
 
 ### Prerequisites
 
@@ -115,9 +115,9 @@ streamlit run streamlit_app_py.py
 
 ```
 
-## 📐 Design Decisions
+## Design Decisions
 
-### 7.1 Why PostgreSQL over MongoDB (NoSQL)?
+### Why PostgreSQL over MongoDB (NoSQL)?
 
 While NoSQL is often attractive for rapid prototyping, we deliberately chose a Relational Database Management System (RDBMS) for this use case:
 
@@ -130,7 +130,7 @@ While NoSQL is often attractive for rapid prototyping, we deliberately chose a R
 4.  **Performance:** For read-heavy analytical dashboards, a well-indexed PostgreSQL database offers superior latency and optimization compared to document stores, which is critical for a responsive chat interface.
     
 
-### 7.2 Why PydanticAI instead of LangChain?
+### Why PydanticAI instead of LangChain?
 
 We chose PydanticAI for its "close-to-the-metal" philosophy:
 
@@ -141,7 +141,7 @@ We chose PydanticAI for its "close-to-the-metal" philosophy:
 -   **Control Flow:** Instead of complex "Graphs" or "Chains," PydanticAI uses standard Python functions and loops, making the logic transparent.
     
 
-### 7.3 Async Handling in Streamlit
+### Async Handling in Streamlit
 
 Streamlit is fundamentally synchronous, while high-performance AI agents are asynchronous.
 
@@ -150,7 +150,7 @@ Streamlit is fundamentally synchronous, while high-performance AI agents are asy
 -   **The Solution:** We implemented a custom `run_async` bridge that manages the `asyncio` event loop manually. This allows us to keep the frontend simple while leveraging the non-blocking performance of PydanticAI in the backend.
     
 
-### 7.4 Security: Read-Only Database Access
+### Security: Read-Only Database Access
 
 To prevent the Agent from accidentally (or maliciously) altering data:
 
@@ -159,14 +159,14 @@ To prevent the Agent from accidentally (or maliciously) altering data:
 -   **Policy:** The user typically has `CONNECT` and `SELECT` privileges only. Commands like `DROP`, `DELETE`, or `INSERT` will be rejected by the database engine itself, providing a hard security layer beyond prompt engineering.
     
 
-### 7.5 Security: SQL Injection Prevention
+### Security: SQL Injection Prevention
 
 -   **Chat History:** Interactions with the application database (storing chat logs) utilize `psycopg`'s parameterized queries (e.g., `VALUES (%s, %s)`). This ensures user input is treated strictly as data, not executable code.
     
 -   **Generated SQL:** While the LLM generates the SQL, we validate the syntax and rely on the Read-Only database permissions to prevent destructive injection attacks.
     
 
-### 7.6 Data Compliance & Privacy
+### Data Compliance & Privacy
 
 To ensure data sovereignty and prevent leakage:
 
