@@ -62,7 +62,7 @@ Penny translates these questions into safe, executable PostgreSQL queries, fetch
 
 ### Prerequisites
 
--   Python 3.9 or higher
+-   Python 3.10 or higher
     
 -   PostgreSQL installed and running locally or in the cloud.
     
@@ -95,7 +95,7 @@ pip install -r requirements.txt
 
 ### 4. Environment Variables
 
-Create a `.env` file in the root directory, or rename sample.env for convenience.
+Create a `.env` file in the root directory, or rename sample.env for convenience. Ensure you update GOOGLE_API_KEY for the model and INPUT_CSV_PATH for the California procurement data CSV source.
 
 ### 5. Load Data
 
@@ -119,26 +119,17 @@ streamlit run streamlit_app_py.py
 
 ### Why PostgreSQL over MongoDB (NoSQL)?
 
-While NoSQL is often attractive for rapid prototyping, we deliberately chose a Relational Database Management System (RDBMS) for this use case:
+While NoSQL is often attractive for rapid prototyping, I deliberately chose a SQL setup for this use case:
 
-1.  **Technical Debt & Structure:** Procurement data is inherently tabular and structured. Using NoSQL for highly structured data often leads to "loose" schemas that accumulate technical debt and data quality issues over time.
-    
-2.  **Schema Complexity:** A NoSQL approach like MongoDB would likely require significant denormalization. This complicates the aggregation pipeline, whereas SQL is purpose-built for the types of `JOIN`, `GROUP BY`, and `SUM` operations required for financial analytics.
-    
-3.  **LLM Accuracy:** Recent research (see [ArXiv:2411.05521](https://arxiv.org/abs/2411.05521 "null")) indicates that LLMs struggle significantly more with MongoDB Query Language (MQL) (approx. 21.55% zero-shot accuracy) compared to SQL (47.05%). The translation complexity for MQL is inherently higher due to the nested nature of JSON documents.
-    
-4.  **Performance:** For read-heavy analytical dashboards, a well-indexed PostgreSQL database offers superior latency and optimization compared to document stores, which is critical for a responsive chat interface.
+1. Generally, NOSQL may be appealing when one is starting out, but the fast and loose nature of it, especially when the data could be structured otherwise, would lead to mounting technical debt over time.
+2. Given the fixed schema of the dataset in question, using NOSQL is adding unneeded complexity. MongoDB would incur a denormalization penalty and the aggregation pipeline would be more sophisticated as a result.
+3. Furthermore, according to [this paper](https://arxiv.org/abs/2411.05521), the translation complexity is inherently higher for MQL due to how unfamiliar the data on it is in contrast with SQL, contributing to the poor zero-shot accuracy (21.55%) compared to the latter (47.05%). Of course, this can be mitigated by employing some form of RAG for similar queries, but it just feels unnecessary.
+4. Finally, for the typical read-heavy analytical use case like this one, NOSQL adds a potential latency hit compared to the well optimized SQL setup. This is also very important considering the chat interface, where quick responses are an expectation.
     
 
-### Why PydanticAI instead of LangChain?
+### Why PydanticAI instead of LangChain/LangGraph?
 
-We chose PydanticAI for its "close-to-the-metal" philosophy:
-
--   **Type Safety:** It leverages Python's native type hinting system, making the codebase easier to debug and maintain compared to LangChain's heavy abstractions.
-    
--   **Structured Output:** PydanticAI excels at forcing LLMs to return valid JSON (e.g., our `SQLResponse` model). This significantly reduces the parser errors common in string-based chain libraries.
-    
--   **Control Flow:** Instead of complex "Graphs" or "Chains," PydanticAI uses standard Python functions and loops, making the logic transparent.
+I chose PydanticAI for its "close-to-the-metal" philosophy:
     
 
 ### Async Handling in Streamlit
