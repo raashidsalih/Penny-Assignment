@@ -129,38 +129,54 @@ While NoSQL is often attractive for rapid prototyping, I deliberately chose a SQ
 
 ### Why PydanticAI instead of LangChain/LangGraph?
 
-I chose PydanticAI for its "close-to-the-metal" philosophy:
+1. Pydantic is a leader in the space, offering production ready solutioning to major players.
+2. The documentation tends to be more consistent, especially in contrast to LangChain's quick, sometimes breaking changes.
+3. By focusing on structured JSON output and type-hinting, PydanticAI provides a more stable and predictable interface to the LLM compared to chain-based systems.
+4. The logic remains within standard Python functions and loops, making the control flow easy to debug and maintain.
     
 
-### Async Handling in Streamlit
+### Async Handling
 
-Streamlit is fundamentally synchronous, while high-performance AI agents are asynchronous.
-
--   **The Constraint:** Running `async` code directly in Streamlit often leads to event loop conflicts.
-    
--   **The Solution:** We implemented a custom `run_async` bridge that manages the `asyncio` event loop manually. This allows us to keep the frontend simple while leveraging the non-blocking performance of PydanticAI in the backend.
+1. This is to achieve responsiveness for concurrent users which requires non-blocking operations. 
+2. However, the Streamlit framework is not natively async. Therefore, I had to implement a custom coroutine bridge to manually manage the asyncio event loop.
     
 
-### Security: Read-Only Database Access
+### SQL Indexes
 
-To prevent the Agent from accidentally (or maliciously) altering data:
-
--   The database user credentials provided to the `SQLAgent` should be restricted at the PostgreSQL level.
-    
--   **Policy:** The user typically has `CONNECT` and `SELECT` privileges only. Commands like `DROP`, `DELETE`, or `INSERT` will be rejected by the database engine itself, providing a hard security layer beyond prompt engineering.
+1. To further improve data retrieval performance, especially for analytical queries that involve filtering and grouping, SQL Indexes were defined.
+2. These indexes are strategically applied to common analytical columns to ensure rapid query execution times.
     
 
-### Security: SQL Injection Prevention
+### Connection Pooling
 
--   **Chat History:** Interactions with the application database (storing chat logs) utilize `psycopg`'s parameterized queries (e.g., `VALUES (%s, %s)`). This ensures user input is treated strictly as data, not executable code.
+1. Inefficiencies are often caused by the overhead of opening and closing database connections on demand.
+2. To mitigate this, I implemented Connection Pooling using the latest psycopg driver.
+3. This keeps a set of database connections ready and reusable, significantly reducing latency for concurrent requests.
     
--   **Generated SQL:** While the LLM generates the SQL, we validate the syntax and rely on the Read-Only database permissions to prevent destructive injection attacks.
-    
 
-### Data Compliance & Privacy
+### SQL Injection Prevention
+1. I prevent SQL Injection attacks by ensuring all user-provided values are handled as data, not as executable code.
+2. This is achieved by using parameterized queries rather than directly injecting user input into the raw query string.
 
-To ensure data sovereignty and prevent leakage:
+## Other Considerations
 
--   **Schema-Only Transmission:** The LLM is **never** fed the actual rows of data in the prompt. It only receives the `table_schema.yaml` (column names and types). The actual financial data remains in your private PostgreSQL instance.
-    
--   **Result Filtering:** Data is queried locally. The LLM only sees the _results_ if a summary is requested, minimizing the data footprint sent to external APIs
+### Read-Only Database Access
+1. To establish a hard security layer against potential issues or nefarious attacks (such as accidental or malicious UPDATE or DELETE commands), the LLM agent must use a dedicated database user.
+2. This user should be configured at the database level with read-only access (typically CONNECT and SELECT privileges) to the procurement tables.
+
+### Consensus RAG Feature
+To enhance query accuracy beyond the basic schema injection, a Consensus RAG Feature can be considered. This involves:
+
+1. Building a vector database of user-approved "golden" SQL queries.
+2. Using RAG to retrieve these relevant, high-accuracy examples.
+3. Including these examples in the agent's prompt to guide the LLM's generation, further improving accuracy.
+
+### Query Healing
+To improve the robustness of the agent, Query Healing can also be considered.
+
+1. If the database returns an error upon executing the LLM-generated SQL, the agent will automatically pass the error message back to the LLM and prompt it to generate a fixed query.
+2. This retry mechanism will be performed a fixed number of times to resolve potential LLM hallucinations or minor syntax errors automatically.
+
+### Data Compliance
+1. To fully address data governance for LLMs, especially for handling sensitive data or achieving specific certifications, the next steps must include figuring out enterprise solutions or on-premise LLM options.
+2. This will allow Penny to manage the LLM processing environment and ensure the proprietary data never leaves the controlled, compliant infrastructure.
