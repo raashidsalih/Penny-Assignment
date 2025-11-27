@@ -333,7 +333,6 @@ def render_results_table(results: list, unique_key: str, sql_query: Optional[str
                 width='stretch'
             )
         except ImportError:
-            # FIX APPLIED HERE: Added unique key
             st.button("📊 Excel (Install openpyxl)", disabled=True, width='stretch', key=f"no_excel_{unique_key}")
     with col3:
         # JSON download
@@ -676,7 +675,6 @@ def handle_user_input(user_question: str):
                 explanation = result.get('explanation', 'Here are the results.')
                 
                 if sql_query:
-                    # FIX APPLIED HERE: Calculate length of results list instead of relying on metadata
                     rows = len(result.get('results', []))
                     confidence = result.get('confidence', 'medium')
                     retries = result.get('retry_attempts', 1)
