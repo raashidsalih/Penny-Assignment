@@ -4,7 +4,7 @@ table_name: california_procurement
 metadata:
   purpose: Stores processed procurement data from the State of California's eSCPRS system.
   data_source_note: This data dictionary is based on the DGS Purchasing Data Dictionary.
-  database_type: PostgreSQL
+  database_type: MongoDB
 
 # Definition of all columns, including type and description
 columns:
