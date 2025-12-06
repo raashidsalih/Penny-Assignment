@@ -1,4 +1,4 @@
-"""PydanticAI agent for SQL query generation and execution."""
+"""PydanticAI agent for MongoDB query generation and execution."""
 
 import logging
 import yaml
@@ -14,9 +14,9 @@ from database_py import db_manager
 logger = logging.getLogger(__name__)
 
 
-class SQLResponse(BaseModel):
-    """Structured response from SQL agent."""
-    sql_query: Optional[str] = Field(default=None, description="PostgreSQL query. Set to None/Null if chat.")
+class QueryResponse(BaseModel):
+    """Structured response from query agent."""
+    sql_query: Optional[str] = Field(default=None, description="MongoDB aggregation pipeline as JSON string. Set to None/Null if chat.")
     explanation: str = Field(description="Brief explanation of the query OR the answer to the user")
     confidence: str = Field(description="Confidence level: high, medium, or low")
 
@@ -28,24 +28,24 @@ class ConversationDependency(BaseModel):
 
 
 class SQLAgent:
-    """Agent for generating and executing SQL queries."""
+    """Agent for generating and executing MongoDB queries."""
     
     def __init__(self):
-        """Initialize the SQL agent."""
+        """Initialize the query agent."""
         # 1. Load Schema (Data Structure)
         self.schema_info = self._load_yaml_schema()
         
-        # 2. Load System Prompt (Personality & Instructions)
+        # 2. Load System Prompt
         self.system_prompt = self._build_system_prompt()
         
         self.model = GoogleModel(model_name=config.GEMINI_MODEL)
         self.agent = Agent(
             model=self.model,
-            output_type=SQLResponse,
+            output_type=QueryResponse,
             system_prompt=self.system_prompt,
             retries=2
         )
-        logger.info("SQL Agent initialized successfully")
+        logger.info("Query Agent initialized successfully")
     
     def _load_yaml_schema(self) -> Dict[str, Any]:
         """Load table schema from YAML file."""
@@ -69,17 +69,17 @@ class SQLAgent:
         """
         # 1. Read the raw template file
         try:
-            prompt_path = Path("system_prompt.txt") # Or use config path
+            prompt_path = Path("system_prompt.txt")
             with open(prompt_path, "r") as f:
                 template = f.read()
         except Exception as e:
             logger.error(f"Could not load system_prompt.txt: {e}")
             # Fallback prompt if file is missing
-            return "You are an AI assistant. Please convert natural language to SQL."
+            return "You are an AI assistant. Please convert natural language to MongoDB queries."
 
         # 2. Format the Schema Data into Strings
         # Default values in case schema loading failed
-        table_name = self.schema_info.get('table_name', 'unknown_table')
+        table_name = self.schema_info.get('table_name', 'unknown_collection')
         db_desc = self.schema_info.get('description', 'No description provided')
         
         # Format columns list
@@ -107,8 +107,8 @@ class SQLAgent:
             self, 
             user_question: str,
             conversation_history: Optional[List[Dict[str, str]]] = None
-        ) -> SQLResponse:
-            """Generate SQL query from natural language question."""
+        ) -> QueryResponse:
+            """Generate MongoDB query from natural language question."""
             try:
                 deps = ConversationDependency(
                     conversation_history=conversation_history or []
@@ -122,22 +122,22 @@ class SQLAgent:
                         context += f"Q: {entry.get('question', '')}\n"
                         sql_val = entry.get('sql')
                         if sql_val:
-                            context += f"SQL: {sql_val}\n"
+                            context += f"Query: {sql_val}\n"
                     context += f"\nCurrent question: {user_question}"
                 
                 result = await self.agent.run(context, deps=deps)
                 return result.output
                 
             except Exception as e:
-                logger.error(f"Error generating SQL: {e}")
-                return SQLResponse(
+                logger.error(f"Error generating query: {e}")
+                return QueryResponse(
                     sql_query=None,
                     explanation=f"Error: {str(e)}",
                     confidence="low"
                 )
     
     def execute_query_with_retry(self, sql_query: str, max_retries: Optional[int] = None) -> Dict[str, Any]:
-        """Execute SQL query with automatic retry logic."""
+        """Execute MongoDB query with automatic retry logic."""
         if max_retries is None:
             max_retries = config.MAX_QUERY_RETRIES
         
@@ -161,7 +161,7 @@ class SQLAgent:
         try:
             sql_response = await self.generate_sql(user_question, conversation_history)
             
-            # If chat only (no SQL)
+            # If chat only (no query)
             if not sql_response.sql_query or sql_response.sql_query.strip().lower() == 'none':
                 return {
                     "success": True,
@@ -171,7 +171,7 @@ class SQLAgent:
                     "results": None
                 }
             
-            # Execute SQL
+            # Execute MongoDB query
             execution_result = self.execute_query_with_retry(sql_response.sql_query)
             
             return {
