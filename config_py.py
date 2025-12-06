@@ -12,12 +12,11 @@ load_dotenv()
 class Config:
     """Application configuration."""
     
-    # Database Configuration
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: str = os.getenv("DB_PORT", "5432")
-    DB_NAME: str = os.getenv("DB_NAME", "penny_db")
+    # MongoDB Configuration
+    MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+    MONGODB_DB_NAME: str = os.getenv("MONGODB_DB_NAME", "penny_db")
+    
+    # Collection/Table name for procurement data
     TABLE_NAME: str = os.getenv("TABLE_NAME", "california_procurement")
     
     # File Paths
@@ -40,9 +39,14 @@ class Config:
     ).split("|")
     
     @property
-    def database_url(self) -> str:
-        """Construct database connection URL."""
-        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def mongodb_uri(self) -> str:
+        """Return MongoDB connection URI."""
+        return self.MONGODB_URI
+    
+    @property
+    def database_name(self) -> str:
+        """Return MongoDB database name."""
+        return self.MONGODB_DB_NAME
     
     @classmethod
     def validate(cls) -> bool:
