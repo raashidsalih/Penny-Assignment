@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine, text
+from pymongo import MongoClient, ASCENDING
 import os
 from dotenv import load_dotenv
 
@@ -8,51 +8,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 1. Configuration
-# Database configuration loaded from environment variables
-DB_CONFIG = {
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': os.getenv('DB_PORT', '5432'),
-    'dbname': os.getenv('DB_NAME')
-}
+# MongoDB configuration loaded from environment variables
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
+MONGODB_DB_NAME = os.getenv('MONGODB_DB_NAME', 'penny_db')
 
 # File Paths
 INPUT_CSV_PATH = os.getenv('INPUT_CSV_PATH', 'default_input.csv')
 CLEANED_CSV_OUTPUT = os.getenv('CLEANED_CSV_OUTPUT', 'default_cleaned.csv')
-TABLE_NAME = os.getenv('TABLE_NAME', 'california_procurement') # Used as dynamic placeholder
-TABLE_SCHEMA_SQL = 'sql/table_schema.sql'
-CHAT_SCHEMA_SQL = 'sql/chat_schema.sql'
+COLLECTION_NAME = os.getenv('TABLE_NAME', 'california_procurement')
 
 
 # 2. Utility Functions
 def get_db_connection():
-    """Creates a SQLAlchemy engine connection."""
-    conn_str = f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
-    engine = create_engine(conn_str)
-    return engine
+    """Creates a MongoDB client connection and returns the database."""
+    client = MongoClient(MONGODB_URI)
+    db = client[MONGODB_DB_NAME]
+    return client, db
 
-def execute_sql_file(engine, file_path, table_name=None):
-    """Reads and executes a SQL file, replacing a placeholder if needed."""
-    try:
-        with open(file_path, 'r') as f:
-            sql_command = f.read()
-        
-        # Replace dynamic table name placeholder used in SQL files
-        if table_name:
-            sql_command = sql_command.replace('__TABLE_NAME__', table_name)
-        
-        with engine.connect() as connection:
-            # SQLAlchemy's connection.execute can handle multiple statements separated by semicolons
-            connection.execute(text(sql_command))
-            connection.commit()
-        print(f"Successfully executed SQL commands from {file_path}.")
-    except FileNotFoundError:
-        print(f"Error: SQL file not found at {file_path}.")
-        raise
-    except Exception as e:
-        print(f"Error executing SQL from {file_path}: {e}")
-        raise
 
 def clean_currency(val):
     """Removes '$' and ',' and converts to float."""
@@ -64,6 +36,31 @@ def clean_currency(val):
         return float(val)
     except ValueError:
         return None
+
+
+def create_indexes(collection):
+    """Create indexes for faster query resolution."""
+    print("Creating indexes...")
+    
+    # Index 1: Filtering by Department and Date (Common analytical queries)
+    collection.create_index([
+        ("department_name", ASCENDING),
+        ("purchase_date", ASCENDING)
+    ], name="idx_dept_date")
+    
+    # Index 2: Searching by Supplier (Common lookup)
+    collection.create_index([("supplier_name", ASCENDING)], name="idx_supplier_name")
+    
+    # Index 3: Filtering by Contract/LPA Number (Used for contract spend analysis)
+    collection.create_index([("lpa_number", ASCENDING)], name="idx_lpa_num")
+    
+    # Index 4: Filtering/Grouping by Acquisition Type
+    collection.create_index([("acquisition_type", ASCENDING)], name="idx_acq_type")
+    
+    # Index 5: Filtering/Grouping by Fiscal Year
+    collection.create_index([("fiscal_year", ASCENDING)], name="idx_fiscal_year")
+    
+    print("Indexes created successfully.")
 
 
 # 3. Main Pipeline
@@ -115,39 +112,71 @@ def run_pipeline():
     print(f"Saving cleaned data to {CLEANED_CSV_OUTPUT}...")
     df.to_csv(CLEANED_CSV_OUTPUT, index=False)
 
-    # Create Table & Indexes
-    print(f"Connecting to database and creating table schema '{TABLE_NAME}' with indexes...")
-    engine = get_db_connection()
-    execute_sql_file(engine, TABLE_SCHEMA_SQL, table_name=TABLE_NAME)
-
-    # Load data to Postgres
-    print("Uploading data to PostgreSQL...")
+    # Connect to MongoDB
+    print(f"Connecting to MongoDB and preparing collection '{COLLECTION_NAME}'...")
+    client, db = get_db_connection()
+    collection = db[COLLECTION_NAME]
+    
+    # Drop existing collection to start fresh
+    print(f"Dropping existing collection '{COLLECTION_NAME}' if it exists...")
+    collection.drop()
+    
+    # Convert DataFrame to list of dictionaries for MongoDB insertion
+    print("Converting data for MongoDB...")
+    
+    # Handle date columns first by converting to Python datetime or None
+    # This must be done before replace() to avoid NaT serialization issues
+    def convert_timestamp(x):
+        """Convert pandas Timestamp to Python datetime, handling NaT."""
+        if pd.isna(x):
+            return None
+        if hasattr(x, 'to_pydatetime'):
+            try:
+                return x.to_pydatetime().replace(tzinfo=None)
+            except:
+                return None
+        return None
+    
+    for col in date_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(convert_timestamp)
+    
+    # Replace remaining NaN with None for MongoDB compatibility
+    df = df.replace({np.nan: None})
+    
+    records = df.to_dict('records')
+    
+    # Load data to MongoDB
+    print("Uploading data to MongoDB...")
     
     try:
-        df.to_sql(
-            TABLE_NAME, 
-            engine, 
-            if_exists='append', 
-            index=False, 
-            chunksize=10000,
-            method=None
-        )
+        # Insert in batches
+        batch_size = 10000
+        total_records = len(records)
+        
+        for i in range(0, total_records, batch_size):
+            batch = records[i:i + batch_size]
+            collection.insert_many(batch)
+            print(f"  Inserted {min(i + batch_size, total_records)}/{total_records} records...")
+        
         print("Success! Data upload complete.")
         
     except Exception as e:
         print(f"An error occurred during upload: {e}")
+        client.close()
         return
 
-    # Call chat_schema.sql
-    print("Executing post-load schema commands for chat system...")
-    execute_sql_file(engine, CHAT_SCHEMA_SQL)
+    # Create indexes for faster queries
+    create_indexes(collection)
 
     # Verify
     print("--- Summary ---")
-    with engine.connect() as connection:
-        result = connection.execute(text(f"SELECT COUNT(*) FROM {TABLE_NAME}"))
-        count = result.scalar()
-        print(f"Total rows currently in database table '{TABLE_NAME}': {count}")
+    count = collection.count_documents({})
+    print(f"Total documents currently in MongoDB collection '{COLLECTION_NAME}': {count}")
+    
+    # Close connection
+    client.close()
+    print("MongoDB connection closed.")
 
 if __name__ == "__main__":
     run_pipeline()
