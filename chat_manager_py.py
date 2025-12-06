@@ -1,12 +1,12 @@
-"""Chat session management with PostgreSQL backend."""
+"""Chat session management with MongoDB backend."""
 
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import json
 from decimal import Decimal
-import psycopg
-from psycopg.rows import dict_row
+from bson import ObjectId
+from pymongo import MongoClient, DESCENDING
 
 from config_py import config
 
@@ -14,163 +14,173 @@ logger = logging.getLogger(__name__)
 
 
 class ChatManager:
-    """Manages chat sessions and message history."""
+    """Manages chat sessions and message history using MongoDB."""
     
-    def __init__(self, connection_string: str):
+    def __init__(self, mongodb_uri: str, db_name: str):
         """
-        Initialize chat manager with database connection.
-        Note: Assumes tables defined in chat_schema.sql exist.
+        Initialize chat manager with MongoDB connection.
         """
-        self.connection_string = connection_string
-        # initialization logic removed as requested
+        self.client = MongoClient(mongodb_uri)
+        self.db = self.client[db_name]
+        self.sessions = self.db['chat_sessions']
+        self.messages = self.db['chat_messages']
+        
+        # Create indexes for performance
+        self._ensure_indexes()
     
-    def create_session(self, session_name: Optional[str] = None) -> int:
-        """Create a new chat session."""
+    def _ensure_indexes(self):
+        """Create indexes for chat collections if they don't exist."""
+        try:
+            # Index for session queries
+            self.sessions.create_index([("updated_at", DESCENDING)])
+            self.sessions.create_index([("is_deleted", 1)])
+            
+            # Index for message queries
+            self.messages.create_index([("session_id", 1), ("created_at", 1)])
+        except Exception as e:
+            logger.warning(f"Could not create indexes: {e}")
+    
+    def create_session(self, session_name: Optional[str] = None) -> str:
+        """Create a new chat session. Returns session_id as string."""
         if not session_name:
             session_name = f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
-        query = """
-        INSERT INTO chat_sessions (session_name, created_at, updated_at)
-        VALUES (%s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING session_id;
-        """
+        session_doc = {
+            "session_name": session_name,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "is_deleted": False
+        }
         
         try:
-            with psycopg.connect(self.connection_string, row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, (session_name,))
-                    result = cur.fetchone()
-                    conn.commit()
-                    session_id = result['session_id']
-                    logger.info(f"Created session {session_id}: {session_name}")
-                    return session_id
+            result = self.sessions.insert_one(session_doc)
+            session_id = str(result.inserted_id)
+            logger.info(f"Created session {session_id}: {session_name}")
+            return session_id
         except Exception as e:
             logger.error(f"Failed to create session: {e}")
             raise
     
     def get_all_sessions(self) -> List[Dict[str, Any]]:
         """Get all non-deleted chat sessions."""
-        query = """
-        SELECT session_id, session_name, created_at, updated_at
-        FROM chat_sessions
-        WHERE is_deleted = FALSE
-        ORDER BY updated_at DESC;
-        """
-        
         try:
-            with psycopg.connect(self.connection_string, row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query)
-                    sessions = cur.fetchall()
-                    return sessions
+            cursor = self.sessions.find(
+                {"is_deleted": False},
+                {"session_name": 1, "created_at": 1, "updated_at": 1}
+            ).sort("updated_at", DESCENDING)
+            
+            sessions = []
+            for doc in cursor:
+                sessions.append({
+                    "session_id": str(doc["_id"]),
+                    "session_name": doc["session_name"],
+                    "created_at": doc["created_at"],
+                    "updated_at": doc["updated_at"]
+                })
+            return sessions
         except Exception as e:
             logger.error(f"Failed to get sessions: {e}")
             return []
     
-    def get_session_messages(self, session_id: int) -> List[Dict[str, Any]]:
+    def get_session_messages(self, session_id: str) -> List[Dict[str, Any]]:
         """Get all messages for a session."""
-        query = """
-        SELECT message_id, role, content, metadata, created_at
-        FROM chat_messages
-        WHERE session_id = %s
-        ORDER BY created_at ASC;
-        """
-        
         try:
-            with psycopg.connect(self.connection_string, row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, (session_id,))
-                    messages = cur.fetchall()
-                    return messages
+            cursor = self.messages.find(
+                {"session_id": session_id}
+            ).sort("created_at", 1)
+            
+            messages = []
+            for doc in cursor:
+                messages.append({
+                    "message_id": str(doc["_id"]),
+                    "role": doc["role"],
+                    "content": doc["content"],
+                    "metadata": doc.get("metadata", {}),
+                    "created_at": doc["created_at"]
+                })
+            return messages
         except Exception as e:
             logger.error(f"Failed to get messages for session {session_id}: {e}")
             return []
     
     def add_message(
         self,
-        session_id: int,
+        session_id: str,
         role: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None
-    ) -> int:
-        """Add a message to a session."""
-        insert_query = """
-        INSERT INTO chat_messages (session_id, role, content, metadata, created_at)
-        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
-        RETURNING message_id;
-        """
+    ) -> str:
+        """Add a message to a session. Returns message_id as string."""
         
-        update_query = """
-        UPDATE chat_sessions
-        SET updated_at = CURRENT_TIMESTAMP
-        WHERE session_id = %s;
-        """
-
         def json_serializer(obj):
             """Helper to convert objects that aren't JSON serializable."""
             if isinstance(obj, Decimal):
                 return float(obj)
+            if isinstance(obj, datetime):
+                return obj.isoformat()
             raise TypeError(f"Type {type(obj)} not serializable")
         
         try:
-            with psycopg.connect(self.connection_string, row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    metadata_json = json.dumps(metadata, default=json_serializer) if metadata else None
-                    
-                    cur.execute(insert_query, (session_id, role, content, metadata_json))
-                    result = cur.fetchone()
-                    message_id = result['message_id']
-                    
-                    # Update session timestamp
-                    cur.execute(update_query, (session_id,))
-                    
-                    conn.commit()
-                    return message_id
+            # Serialize metadata if needed
+            if metadata:
+                # Convert to JSON and back to ensure all values are serializable
+                metadata = json.loads(json.dumps(metadata, default=json_serializer))
+            
+            message_doc = {
+                "session_id": session_id,
+                "role": role,
+                "content": content,
+                "metadata": metadata or {},
+                "created_at": datetime.utcnow()
+            }
+            
+            result = self.messages.insert_one(message_doc)
+            message_id = str(result.inserted_id)
+            
+            # Update session timestamp
+            self.sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {"updated_at": datetime.utcnow()}}
+            )
+            
+            return message_id
         except Exception as e:
             logger.error(f"Failed to add message: {e}")
             raise
     
-    def rename_session(self, session_id: int, new_name: str) -> bool:
+    def rename_session(self, session_id: str, new_name: str) -> bool:
         """Rename a chat session."""
-        query = """
-        UPDATE chat_sessions
-        SET session_name = %s, updated_at = CURRENT_TIMESTAMP
-        WHERE session_id = %s AND is_deleted = FALSE;
-        """
-        
         try:
-            with psycopg.connect(self.connection_string, row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, (new_name, session_id))
-                    conn.commit()
-                    logger.info(f"Renamed session {session_id} to '{new_name}'")
-                    return True
+            result = self.sessions.update_one(
+                {"_id": ObjectId(session_id), "is_deleted": False},
+                {"$set": {"session_name": new_name, "updated_at": datetime.utcnow()}}
+            )
+            if result.modified_count > 0:
+                logger.info(f"Renamed session {session_id} to '{new_name}'")
+                return True
+            return False
         except Exception as e:
             logger.error(f"Failed to rename session: {e}")
             return False
     
-    def delete_session(self, session_id: int) -> bool:
+    def delete_session(self, session_id: str) -> bool:
         """Soft delete a chat session."""
-        query = """
-        UPDATE chat_sessions
-        SET is_deleted = TRUE, updated_at = CURRENT_TIMESTAMP
-        WHERE session_id = %s;
-        """
-        
         try:
-            with psycopg.connect(self.connection_string, row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, (session_id,))
-                    conn.commit()
-                    logger.info(f"Deleted session {session_id}")
-                    return True
+            result = self.sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
+            )
+            if result.modified_count > 0:
+                logger.info(f"Deleted session {session_id}")
+                return True
+            return False
         except Exception as e:
             logger.error(f"Failed to delete session: {e}")
             return False
     
     def get_conversation_context(
         self, 
-        session_id: int, 
+        session_id: str, 
         last_n: int = 5
     ) -> List[Dict[str, str]]:
         """Get recent conversation context for the agent."""
@@ -183,7 +193,7 @@ class ChatManager:
                 user_msg = messages[i]
                 assistant_msg = messages[i + 1]
                 
-                # Parse metadata for SQL query
+                # Get metadata
                 metadata = assistant_msg.get('metadata', {})
                 if isinstance(metadata, str):
                     try:
@@ -200,4 +210,4 @@ class ChatManager:
         return context[-last_n:] if context else []
 
 # Global chat manager instance
-chat_manager = ChatManager(config.database_url)
+chat_manager = ChatManager(config.mongodb_uri, config.database_name)
