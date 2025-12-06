@@ -3,6 +3,8 @@
 
 **An AI-powered Procurement Agent.**
 
+![main screen](https://github.com/raashidsalih/Penny-Assignment/blob/main/assets/main_screen.png)
+
 ## Overview
 
 **Penny Procurement Assistant** is an intelligent data assistant designed to democratize access to procurement data (namely, California procurement data). Instead of writing complex queries manually, users can ask natural language questions like _"How much did we spend with Ramsell in 2015?"_ or _"Show me the top 5 suppliers by transaction count."_
