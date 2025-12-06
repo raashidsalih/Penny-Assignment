@@ -6,9 +6,7 @@ pydantic~=2.12.4
 google-generativeai~=0.8.5
 
 # Database
-psycopg[binary,pool]
-psycopg2-binary~=2.9.11
-SQLAlchemy~=2.0.0
+pymongo~=4.6.0
 
 # Frontend
 streamlit~=1.51.0
