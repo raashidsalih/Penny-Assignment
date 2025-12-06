@@ -333,6 +333,7 @@ def render_results_table(results: list, unique_key: str, sql_query: Optional[str
                 width='stretch'
             )
         except ImportError:
+            # FIX APPLIED HERE: Added unique key
             st.button("📊 Excel (Install openpyxl)", disabled=True, width='stretch', key=f"no_excel_{unique_key}")
     with col3:
         # JSON download
@@ -382,7 +383,7 @@ def render_results_table(results: list, unique_key: str, sql_query: Optional[str
 
 def render_sql_query(sql_query: str, unique_key: str):
     """Render SQL query with advanced options."""
-    with st.expander("🔍 SQL Query", expanded=False):
+    with st.expander("🔍 MongoDB Query", expanded=False):
         # Query stats
         query_stats = analyze_sql_query(sql_query)
         col1, col2, col3 = st.columns(3)
@@ -400,11 +401,11 @@ def render_sql_query(sql_query: str, unique_key: str):
         col_a, col_b, col_c = st.columns(3)
         with col_a:
             if st.button("📋 Copy", key=f"copy_{unique_key}", width='stretch'):
-                st.toast("SQL copied to clipboard!", icon="✅")
+                st.toast("MongoDB Query copied to clipboard!", icon="✅")
                 # Note: Actual clipboard copy requires JavaScript
         with col_b:
             if st.button("📝 Explain Query", key=f"explain_{unique_key}", width='stretch'):
-                st.info("Ask me: 'Can you explain this SQL query?' to get a breakdown!")
+                st.info("Ask me: 'Can you explain this MongoDB query?' to get a breakdown!")
         with col_c:
             if st.button("🔧 Modify Query", key=f"modify_{unique_key}", width='stretch'):
                 st.info("Ask me: 'Can you modify the query to...' with your changes!")
@@ -427,7 +428,7 @@ def initialize_session_state():
     if 'toast_message' not in st.session_state:
         st.session_state.toast_message = None
 
-def load_session(session_id: int):
+def load_session(session_id: str):
     """Load a chat session with error handling."""
     try:
         st.session_state.current_session_id = session_id
@@ -481,7 +482,7 @@ def display_welcome_screen():
         <div class="welcome-title">📊 Penny Procurement Assistant</div>
         <div class="welcome-subtitle">
             Your AI-powered assistant for exploring California procurement data.<br>
-            Ask questions in natural language and get instant SQL-powered insights.
+            Ask questions in natural language and get instant MongoDB-powered insights.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -548,7 +549,7 @@ def display_welcome_screen():
         - **Be specific**: Instead of "show me data", try "show me top 10 vendors by spending"
         - **Ask follow-ups**: "Can you break that down by month?" or "Show only 2024 data"
         - **Request formats**: "Give me a summary" or "Show as a table"
-        - **Check the SQL**: Review generated queries to understand how data is retrieved
+        - **Check the MongoDB Query**: Review generated queries to understand how data is retrieved
         - **Download results**: Export to CSV, Excel, or JSON for further analysis
         """)
 
