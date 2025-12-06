@@ -32,11 +32,11 @@ Penny translates these questions into MongoDB aggregation pipelines, fetches the
 
 ## Tech Stack
 
-- **Language:** Python 3.10+
+- **Language:** Python 3.13
 - **LLM Framework:** [PydanticAI](https://github.com/pydantic/pydantic-ai)
 - **Model:** Google Gemini Flash (latest)
 - **Database:** MongoDB
-- **DB Driver:** PyMongo 4.6+
+- **DB Driver:** PyMongo 4.6
 - **Frontend:** Streamlit
 - **Configuration:** Pydantic Settings & Python-dotenv
 
@@ -44,14 +44,14 @@ Penny translates these questions into MongoDB aggregation pipelines, fetches the
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.13
 - MongoDB installed and running locally (or MongoDB Atlas)
 
 ### 1. Clone and Configure
 
 ```bash
-git clone https://github.com/your-username/penny-procurement.git
-cd penny-procurement
+git clone https://github.com/raashidsalih/Penny-Assignment.git
+cd Penny-Assignment
 ```
 
 ### 2. Set up Virtual Environment
@@ -100,7 +100,7 @@ CLEANED_CSV_OUTPUT=procurement_data_cleaned.csv
 
 ### 6. Load Data
 
-Run the data loader script to populate MongoDB with the California procurement dataset:
+Place the CSV file at INPUT_CSV_PATH and run the data loader script to populate MongoDB with the California procurement dataset:
 
 ```bash
 python data_load.py
@@ -171,7 +171,8 @@ While NoSQL is often attractive for rapid prototyping, I advice for a SQL setup 
 
 ### Read-Only Database Access
 
-For production deployments, consider creating a dedicated MongoDB user with read-only access to the procurement collection to prevent accidental or malicious data modifications.
+1. To establish a hard security layer against potential issues or nefarious attacks (such as accidental or malicious updates or deletes), the LLM agent must use a dedicated database user.
+2. This user should be configured at the database level with read-only access to the procurement tables.
 
 ### Consensus RAG Feature
 
@@ -182,8 +183,12 @@ To enhance query accuracy beyond basic schema injection:
 
 ### Query Healing
 
-If MongoDB returns an error, the agent can automatically retry with the error message fed back to the LLM for self-correction (configured via `MAX_QUERY_RETRIES`).
+To improve the robustness of the agent, Query Healing can also be considered.
+
+1. If the database returns an error upon executing the LLM-generated SQL, the agent will automatically pass the error message back to the LLM and prompt it to generate a fixed query.
+2. This retry mechanism will be performed a fixed number of times to resolve potential LLM hallucinations or minor syntax errors automatically.
 
 ### Data Compliance
 
-For sensitive data or enterprise deployments, consider on-premise LLM options to ensure proprietary data never leaves the controlled infrastructure.
+1. To fully address data governance for LLMs, especially for handling sensitive data or achieving specific certifications, the next steps must include figuring out enterprise solutions or on-premise LLM options.
+2. This will allow Penny to manage the LLM processing environment and ensure the proprietary data never leaves the controlled, compliant infrastructure.
