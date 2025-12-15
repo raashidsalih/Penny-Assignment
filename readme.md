@@ -192,3 +192,9 @@ To improve the robustness of the agent, Query Healing can also be considered.
 
 1. To fully address data governance for LLMs, especially for handling sensitive data or achieving specific certifications, the next steps must include figuring out enterprise solutions or on-premise LLM options.
 2. This will allow Penny to manage the LLM processing environment and ensure the proprietary data never leaves the controlled, compliant infrastructure.
+
+### Named Entity Recognition
+
+1. When a query contains a reference to an entity (like Ramsell, for instance), it's not enough to use it directly in the query, even if we use some sort of fuzzy matching algorithm.
+2. Therefore, it becomes relevant to enable agentic behavior to query the categories of a particular column, find the closest match, validate with the user in case of ambiguity, and then use it in the query.
+3. We can consider caching column categories for optimal behavior, only refreshing this history in case of a cache miss.
